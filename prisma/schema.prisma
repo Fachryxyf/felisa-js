@@ -1,0 +1,48 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relasi: Satu User bisa punya banyak Review
+  reviews   Review[]
+}
+
+// Model baru untuk Produk (Bucket)
+model Product {
+  id      Int      @id @default(autoincrement())
+  name    String   @unique
+  
+  // Relasi: Satu Product bisa punya banyak Review
+  reviews Review[]
+}
+
+// Model baru untuk Review (Penilaian)
+model Review {
+  id          Int     @id @default(autoincrement())
+  comment     String
+  rating      Int     // Rating bintang keseluruhan (1-5)
+  
+  // Relasi ke User
+  userId      Int
+  user        User    @relation(fields: [userId], references: [id])
+  
+  // Relasi ke Product
+  productId   Int
+  product     Product @relation(fields: [productId], references: [id])
+  
+  createdAt   DateTime @default(now())
+}
