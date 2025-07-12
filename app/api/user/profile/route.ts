@@ -1,36 +1,41 @@
 // app/api/user/profile/route.ts
-
 import prisma from '../../../../lib/prisma';
 import { NextResponse } from 'next/server';
 
-export async function PATCH(request: Request) {
+export async function GET() {
   try {
-    const { name, phone } = await request.json();
-
-    // NOTE: Ini adalah penyederhanaan. Kita cari user berdasarkan email admin.
     const adminEmail = 'admin@gmail.com';
-
-    // 1. Cari dulu user admin berdasarkan email untuk mendapatkan ID-nya
-    const adminUser = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: adminEmail },
+      select: { name: true, phone: true, email: true, image: true }, // Ambil data image
     });
 
-    // Jika karena suatu hal user admin tidak ada, kirim error
-    if (!adminUser) {
-      return NextResponse.json({ success: false, message: 'User admin tidak ditemukan.' }, { status: 404 });
-    }
+    if (!user) return NextResponse.json({ message: 'User tidak ditemukan.' }, { status: 404 });
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error('API GET Profile Error:', error);
+    return NextResponse.json({ message: 'Gagal mengambil data profil.' }, { status: 500 });
+  }
+}
 
-    // 2. Gunakan ID yang ditemukan untuk melakukan update
+export async function PATCH(request: Request) {
+  try {
+    const { name, phone, image } = await request.json(); // Terima data image
+    const adminEmail = 'admin@gmail.com';
+    const adminUser = await prisma.user.findUnique({ where: { email: adminEmail } });
+
+    if (!adminUser) return NextResponse.json({ success: false, message: 'User admin tidak ditemukan.' }, { status: 404 });
+
     const updatedUser = await prisma.user.update({
-      where: { id: adminUser.id }, // Gunakan ID dari hasil pencarian
+      where: { id: adminUser.id },
       data: {
         name: name,
         phone: phone,
+        image: image, // Simpan data image
       },
     });
 
     return NextResponse.json({ success: true, message: 'Profil berhasil diperbarui.', user: updatedUser });
-
   } catch (error) {
     console.error('API Update Profile Error:', error);
     return NextResponse.json({ success: false, message: 'Gagal memperbarui profil.' }, { status: 500 });
