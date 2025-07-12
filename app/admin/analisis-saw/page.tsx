@@ -1,53 +1,35 @@
 // app/admin/analisis-saw/page.tsx
-'use client';
 
 import React from 'react';
+import prisma from '../../../lib/prisma';
+// 1. Impor tipe model dari Prisma Client
+import { Product, Review } from '@prisma/client';
 
-// --- DATA DARI SKRIPSI BAB IV ---
-
-// Alternatif Produk [cite: 40]
-const alternatives = [
-  { name: 'Bucket Bunga' },
-  { name: 'Bucket Uang' },
-  { name: 'Bucket Barang' },
-  { name: 'Custom' },
-];
-
-// Kriteria dan Bobot [cite: 53]
+// Kriteria dan Bobot
 const criteria = [
-  { name: 'Waktu (B1)', weight: 0.10, attribute: 'benefit' },
-  { name: 'Harga (B2)', weight: 0.30, attribute: 'benefit' },
-  { name: 'Bahan (B3)', weight: 0.15, attribute: 'benefit' },
-  { name: 'Desain (B4)', weight: 0.40, attribute: 'benefit' },
-  { name: 'Packaging (B5)', weight: 0.05, attribute: 'benefit' },
+  { name: 'Waktu (B1)', weight: 0.10, key: 'ratingWaktu' as const },
+  { name: 'Harga (B2)', weight: 0.30, key: 'ratingHarga' as const },
+  { name: 'Bahan (B3)', weight: 0.15, key: 'ratingBahan' as const },
+  { name: 'Desain (B4)', weight: 0.40, key: 'ratingDesain' as const },
+  { name: 'Packaging (B5)', weight: 0.05, key: 'ratingPackaging' as const },
 ];
 
-// Matrix Penilaian Awal (X) [cite: 59]
-const ratingsMatrix = [
-  // B1, B2, B3, B4, B5
-  [4, 4, 2, 5, 4], // Bucket Bunga
-  [4, 3, 5, 4, 2], // Bucket Uang
-  [2, 4, 3, 5, 5], // Bucket Barang
-  [4, 3, 4, 5, 2], // Custom
-];
+// 2. Definisikan tipe untuk hasil peringkat
+type RankedAlternative = {
+  name: string;
+  score: number;
+};
 
 // --- FUNGSI PERHITUNGAN SAW ---
-
-// 1. Normalisasi Matriks
 const normalizeMatrix = (matrix: number[][]) => {
   const numAlternatives = matrix.length;
+  if (numAlternatives === 0) return [];
   const numCriteria = matrix[0].length;
   const normalized = Array.from({ length: numAlternatives }, () => Array(numCriteria).fill(0));
   
   for (let j = 0; j < numCriteria; j++) {
-    // Cari nilai max untuk setiap kolom (karena semua kriteria adalah benefit) [cite: 75]
-    let maxVal = -Infinity;
-    for (let i = 0; i < numAlternatives; i++) {
-      if (matrix[i][j] > maxVal) {
-        maxVal = matrix[i][j];
-      }
-    }
-    
+    let maxVal = Math.max(...matrix.map(row => row[j]));
+    if (maxVal === 0) maxVal = 1;
     for (let i = 0; i < numAlternatives; i++) {
       normalized[i][j] = matrix[i][j] / maxVal;
     }
@@ -55,69 +37,101 @@ const normalizeMatrix = (matrix: number[][]) => {
   return normalized;
 };
 
-// 2. Kalkulasi Nilai Akhir
 const calculateScores = (normalizedMatrix: number[][]) => {
-  return normalizedMatrix.map(row => {
-    let score = 0;
-    for (let j = 0; j < row.length; j++) {
-      score += row[j] * criteria[j].weight; // Rumus: V = Σ(Wj * Rij) [cite: 147]
-    }
-    return score;
-  });
+  return normalizedMatrix.map(row => 
+    row.reduce((score, val, j) => score + val * criteria[j].weight, 0)
+  );
 };
 
 
 // --- KOMPONEN UTAMA ---
+export default async function SawAnalysisPage() {
 
-export default function SawAnalysisPage() {
+  const products: Product[] = await prisma.product.findMany();
+  const reviews: Review[] = await prisma.review.findMany();
+
+  // 3. Definisikan tipe untuk objek agregasi
+  type AggregatedRating = { sum: number; count: number };
+  const productRatings: { [key: number]: { name: string; [key: string]: AggregatedRating | string } } = {};
+
+  for (const product of products) {
+    productRatings[product.id] = {
+      name: product.name,
+      ...Object.fromEntries(criteria.map(c => [c.key, { sum: 0, count: 0 }]))
+    };
+  }
+
+  for (const review of reviews) {
+    const productRating = productRatings[review.productId];
+    if (productRating) {
+      for (const c of criteria) {
+        const key = c.key;
+        const rating = productRating[key] as AggregatedRating;
+        rating.sum += review[key];
+        rating.count++;
+      }
+    }
+  }
+
+  const ratingsMatrix = products.map((p: Product) => {
+    const ratings = productRatings[p.id];
+    return criteria.map(c => {
+      const { sum, count } = ratings[c.key] as AggregatedRating;
+      return count > 0 ? sum / count : 0;
+    });
+  });
+
   const normalized = normalizeMatrix(ratingsMatrix);
   const finalScores = calculateScores(normalized);
 
-  // Gabungkan alternatif dengan skornya untuk diurutkan
-  const rankedAlternatives = alternatives.map((alt, index) => ({
-    ...alt,
+  // 4. Tambahkan tipe pada parameter sort
+  const rankedAlternatives = products.map((alt: Product, index: number) => ({
+    name: alt.name,
     score: finalScores[index],
-  })).sort((a, b) => b.score - a.score); // Urutkan dari skor tertinggi
+  })).sort((a: RankedAlternative, b: RankedAlternative) => b.score - a.score);
+
 
   return (
     <div>
       <h2 className="text-3xl font-bold text-brand-text">Hasil Analisis SAW</h2>
       <p className="mt-2 text-gray-600">
-        Perankingan jenis bucket berdasarkan preferensi pelanggan.
+        Perankingan jenis bucket berdasarkan data ulasan aktual dari database.
       </p>
 
-      {/* Tabel Hasil Akhir */}
-      <div className="mt-8 overflow-hidden bg-white rounded-xl shadow-md">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Peringkat</th>
-              <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Jenis Bucket</th>
-              <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Skor Akhir (V)</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {rankedAlternatives.map((alt, index) => (
-              <tr key={alt.name} className={index === 0 ? 'bg-orange-100' : ''}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 text-lg font-bold ${index === 0 ? 'text-orange-800' : 'text-gray-700'}`}>
-                    {index + 1}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">{alt.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-bold">{alt.score.toFixed(4)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {rankedAlternatives.length === 0 ? (
+        <p className="mt-8 text-gray-500">Belum ada data yang cukup untuk dianalisis.</p>
+      ) : (
+        <>
+          <div className="mt-8 overflow-hidden bg-white rounded-xl shadow-md">
+            <table className="min-w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Peringkat</th>
+                  <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Jenis Bucket</th>
+                  <th className="px-6 py-3 text-left text-sm font-bold text-brand-text uppercase tracking-wider">Skor Akhir (V)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {/* 5. Tambahkan tipe di sini */}
+                {rankedAlternatives.map((alt: RankedAlternative, index: number) => (
+                  <tr key={alt.name} className={index === 0 ? 'bg-orange-100' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap"><span className={`px-3 py-1 text-lg font-bold ${index === 0 ? 'text-orange-800' : 'text-gray-700'}`}>{index + 1}</span></td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-semibold">{alt.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-800 font-bold">{alt.score.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="p-6 mt-6 bg-green-100 border-l-4 border-green-500 rounded-r-lg">
-        <h3 className="text-lg font-bold text-green-800">Rekomendasi Utama</h3>
-        <p className="mt-1 text-green-700">
-          Berdasarkan hasil perhitungan, **{rankedAlternatives[0].name}** adalah jenis bucket yang paling diminati dan direkomendasikan untuk menjadi prioritas.
-        </p>
-      </div>
+          <div className="p-6 mt-6 bg-green-100 border-l-4 border-green-500 rounded-r-lg">
+            <h3 className="text-lg font-bold text-green-800">Rekomendasi Utama</h3>
+            <p className="mt-1 text-green-700">
+              Berdasarkan hasil perhitungan, **{rankedAlternatives[0].name}** adalah jenis bucket yang paling diminati.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }

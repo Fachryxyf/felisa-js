@@ -14,10 +14,10 @@ model User {
   email     String   @unique
   name      String
   password  String
+  phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  // Relasi: Satu User bisa punya banyak Review
   reviews   Review[]
 }
 
