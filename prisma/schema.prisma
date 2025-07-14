@@ -15,47 +15,46 @@ enum Role {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  password  String
-  phone     String?
-  image     String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  role      Role     @default(CUSTOMER)
+  id                  Int                  @id @default(autoincrement())
+  email               String               @unique
+  name                String
+  password            String
+  phone               String?
+  image               String?              @db.Text
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  role                Role                 @default(CUSTOMER)
 
-  reviews   Review[]
-  orders    Order[]
-  
-  // Relasi ke token reset password
+  reviews             Review[]
+  orders              Order[]
   passwordResetTokens PasswordResetToken[]
 }
 
 model Product {
   id         Int         @id @default(autoincrement())
   name       String      @unique
+  imageUrl   String?     @db.Text // Tambahkan baris ini
   reviews    Review[]
   orderItems OrderItem[]
 }
 
 model Review {
-  id               Int      @id @default(autoincrement())
-  reviewerName     String?
-  comment          String
-  ratingWaktu      Int
-  ratingHarga      Int
-  ratingBahan      Int
-  ratingDesain     Int
-  ratingPackaging  Int
+  id              Int      @id @default(autoincrement())
+  reviewerName    String?
+  comment         String
+  ratingWaktu     Int
+  ratingHarga     Int
+  ratingBahan     Int
+  ratingDesain    Int
+  ratingPackaging Int
   
-  userId           Int?
-  user             User?    @relation(fields: [userId], references: [id])
+  userId          Int?
+  user            User?    @relation(fields: [userId], references: [id])
   
-  productId        Int
-  product          Product  @relation(fields: [productId], references: [id])
+  productId       Int
+  product         Product  @relation(fields: [productId], references: [id])
   
-  createdAt        DateTime @default(now())
+  createdAt       DateTime @default(now())
 }
 
 model Order {
@@ -82,13 +81,12 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id])
 }
 
-// Model baru untuk menyimpan token reset password
 model PasswordResetToken {
-  id          Int      @id @default(autoincrement())
-  token       String   @unique
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
 
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
 }
