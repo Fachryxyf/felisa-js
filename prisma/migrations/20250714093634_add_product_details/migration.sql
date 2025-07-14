@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "description" TEXT,
+ADD COLUMN     "discountPrice" DOUBLE PRECISION,
+ADD COLUMN     "flashSaleEndDate" TIMESTAMP(3),
+ADD COLUMN     "price" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "stock" INTEGER NOT NULL DEFAULT 0;

@@ -31,11 +31,17 @@ model User {
 }
 
 model Product {
-  id         Int         @id @default(autoincrement())
-  name       String      @unique
-  imageUrl   String?     @db.Text // Tambahkan baris ini
-  reviews    Review[]
-  orderItems OrderItem[]
+  id               Int        @id @default(autoincrement())
+  name             String     @unique
+  imageUrl         String?    @db.Text
+  description      String?    @db.Text // Deskripsi produk
+  price            Float      @default(0) // Harga normal
+  stock            Int        @default(0) // Jumlah stok
+  discountPrice    Float?     // Harga diskon (opsional)
+  flashSaleEndDate DateTime?  // Waktu akhir flash sale (opsional)
+
+  reviews          Review[]
+  orderItems       OrderItem[]
 }
 
 model Review {
