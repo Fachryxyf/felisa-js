@@ -1,43 +1,34 @@
-// app/(publik)/produk/[id]/page.tsx
-
 import Image from 'next/image';
 import Link from 'next/link';
 import prisma from '../../../../lib/prisma';
 import { notFound } from 'next/navigation';
 import ReviewForm from './ReviewForm';
+import type { Prisma } from '@prisma/client';
 import { cookies } from 'next/headers';
 import * as jose from 'jose';
 import { HiArrowLeft } from 'react-icons/hi';
-import type { Prisma } from '@prisma/client';
 
-// Tipe data untuk payload JWT
+// Definisikan tipe payload JWT
 type UserPayload = {
   readonly userId: number;
   readonly name: string;
   readonly role: 'ADMIN' | 'CUSTOMER';
 };
 
-// Komponen ikon bintang
-const StarIcon = ({ filled }: { filled: boolean }) => (
-    <svg className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-    </svg>
-);
-
 // Fungsi untuk mengambil data produk dan ulasannya
 async function getProductData(productId: number) {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: {
-        reviews: {
-          orderBy: { createdAt: 'desc' },
-        },
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      reviews: {
+        orderBy: { createdAt: 'desc' },
       },
-    });
-    return product;
+    },
+  });
+  return product;
 }
 
-// Mendapatkan tipe data spesifik dari hasil query Prisma
+// Dapatkan tipe data dari hasil query Prisma
 type ProductWithReviews = Prisma.PromiseReturnType<typeof getProductData>;
 type ReviewFromQuery = NonNullable<ProductWithReviews>['reviews'][number];
 
@@ -56,12 +47,17 @@ const productImageMap: { [key: string]: string } = {
 };
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
-  if (!params.id || isNaN(parseInt(params.id))) notFound();
   const productId = parseInt(params.id);
+  
+  // Panggil fungsi data fetching yang sudah kita pisahkan
+  const product = await getProductData(productId);
+
+  if (!product) {
+    notFound();
+  }
 
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('auth_session');
-  
   let loggedInUser: UserPayload | null = null;
   if (sessionCookie?.value) {
     try {
@@ -71,12 +67,6 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     } catch (err) {
       console.error("Token verification failed:", err);
     }
-  }
-
-  const product = await getProductData(productId);
-
-  if (!product) {
-    notFound();
   }
 
   return (
@@ -120,3 +110,9 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     </div>
   );
 }
+
+const StarIcon = ({ filled }: { filled: boolean }) => (
+  <svg className={`w-5 h-5 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+  </svg>
+);
