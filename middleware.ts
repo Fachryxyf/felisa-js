@@ -2,38 +2,51 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import * as jose from 'jose';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get('auth_session');
   const { pathname } = request.nextUrl;
 
-  // 1. Jika pengguna sudah login (ada cookie)
-  if (sessionCookie) {
-    // dan mencoba mengakses halaman login atau register,
-    if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
-      // arahkan mereka ke dasbor admin.
-      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
-    }
-  }
-
-  // 2. Jika pengguna belum login (tidak ada cookie)
   if (!sessionCookie) {
-    // dan mencoba mengakses halaman admin,
-    if (pathname.startsWith('/admin')) {
-      // arahkan mereka ke halaman login.
+    if (pathname.startsWith('/admin') || pathname.startsWith('/akun-saya')) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
+    return NextResponse.next();
   }
 
-  // 3. Jika tidak ada kondisi di atas yang terpenuhi, lanjutkan seperti biasa.
-  return NextResponse.next();
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload } = await jose.jwtVerify(sessionCookie.value, secret);
+    
+    const userRole = (payload as { role: string }).role;
+
+    if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
+      const url = userRole === 'ADMIN' ? '/admin/dashboard' : '/akun-saya';
+      return NextResponse.redirect(new URL(url, request.url));
+    }
+
+    if (userRole === 'CUSTOMER' && pathname.startsWith('/admin')) {
+        return NextResponse.redirect(new URL('/akun-saya', request.url));
+    }
+
+    return NextResponse.next();
+
+  } catch (err) {
+    // Tambahkan console.error untuk menggunakan variabel 'err'
+    console.error('Token tidak valid atau kedaluwarsa:', err);
+    
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    response.cookies.delete('auth_session');
+    return response;
+  }
 }
 
-// 4. Konfigurasi matcher sekarang mencakup semua rute yang ingin kita periksa.
 export const config = {
   matcher: [
-    '/admin/:path*', // Lindungi semua rute admin
-    '/login',         // Periksa halaman login
-    '/register',      // Periksa halaman register (jika ada nanti)
+    '/admin/:path*',
+    '/akun-saya/:path*',
+    '/login',
+    '/register',
   ],
 };

@@ -3,64 +3,55 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { serialize } from 'cookie';
+import jwt from 'jsonwebtoken';
+import { NextResponse } from 'next/server';
 
-// Inisialisasi Prisma Client
 const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
+    const user = await prisma.user.findUnique({ where: { email } });
 
-    // 1. Cari pengguna di database berdasarkan email
-    const user = await prisma.user.findUnique({
-      where: { email: email },
-    });
-
-    // 2. Jika pengguna tidak ditemukan, kirim error
     if (!user) {
-      return new Response(
-        JSON.stringify({ success: false, message: 'Email atau kata sandi salah.' }),
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: 'Email atau kata sandi salah.' }, { status: 401 });
     }
 
-    // 3. Bandingkan password yang dikirim dengan hash di database
     const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    // 4. Jika password tidak cocok, kirim error
     if (!isPasswordValid) {
-      return new Response(
-        JSON.stringify({ success: false, message: 'Email atau kata sandi salah.' }),
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: 'Email atau kata sandi salah.' }, { status: 401 });
     }
 
-    // 5. Jika email dan password cocok, buat session cookie
-    const sessionToken = 'user-is-logged-in'; // Token sederhana
-    const cookie = serialize('auth_session', sessionToken, {
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role, // Sertakan role di dalam token
+    };
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET!, { expiresIn: '7d' });
+
+    const cookie = serialize('auth_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 minggu
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
 
-    // Kirim respons sukses beserta cookie
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Login berhasil!',
-    }), {
-      status: 200,
-      headers: { 'Set-Cookie': cookie },
+    // Sertakan juga role di dalam respons JSON
+    return NextResponse.json({
+        success: true,
+        message: 'Login berhasil!',
+        user: { role: user.role }
+    }, {
+        status: 200,
+        headers: { 'Set-Cookie': cookie }
     });
 
   } catch (error) {
     console.error('API Login Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, message: 'Terjadi kesalahan pada server.' }),
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: 'Terjadi kesalahan pada server.' }, { status: 500 });
   } finally {
-    // Selalu tutup koneksi prisma setelah selesai
     await prisma.$disconnect();
   }
 }

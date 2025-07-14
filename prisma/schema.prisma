@@ -9,6 +9,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -18,39 +23,72 @@ model User {
   image     String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+  role      Role     @default(CUSTOMER)
+
   reviews   Review[]
+  orders    Order[]
+  
+  // Relasi ke token reset password
+  passwordResetTokens PasswordResetToken[]
 }
 
-// Model baru untuk Produk (Bucket)
 model Product {
-  id      Int      @id @default(autoincrement())
-  name    String   @unique
-  
-  // Relasi: Satu Product bisa punya banyak Review
-  reviews Review[]
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  reviews    Review[]
+  orderItems OrderItem[]
 }
 
-// Model baru untuk Review (Penilaian)
 model Review {
-  id          Int      @id @default(autoincrement())
-  comment     String
-  
-  // Hapus baris ini
-  // rating      Int
-
-  // Tambahkan 5 kolom baru ini untuk setiap kriteria
+  id               Int      @id @default(autoincrement())
+  reviewerName     String?
+  comment          String
   ratingWaktu      Int
   ratingHarga      Int
   ratingBahan      Int
   ratingDesain     Int
   ratingPackaging  Int
   
+  userId           Int?
+  user             User?    @relation(fields: [userId], references: [id])
+  
+  productId        Int
+  product          Product  @relation(fields: [productId], references: [id])
+  
+  createdAt        DateTime @default(now())
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  customerName String
+  orderDate    DateTime    @default(now())
+  totalAmount  Float
+  status       String      @default("Pending")
+  
+  userId       Int?
+  user         User?       @relation(fields: [userId], references: [id])
+
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  quantity  Int
+  
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id])
+  
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+// Model baru untuk menyimpan token reset password
+model PasswordResetToken {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
   userId      Int
   user        User     @relation(fields: [userId], references: [id])
-  
-  productId   Int
-  product     Product  @relation(fields: [productId], references: [id])
-  
-  createdAt   DateTime @default(now())
 }

@@ -1,21 +1,19 @@
 // app/admin/penilaian/page.tsx
-'use client'; // Jadikan Client Component
+'use client';
 
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
+import type { Review, User, Product } from '@prisma/client';
 
-// Tipe data untuk review
-type ReviewWithDetails = {
-  id: number;
-  comment: string;
-  rating: number;
-  user: { name: string };
-  product: { name: string };
+// Tipe data yang lebih akurat untuk review dari API kita
+type ReviewWithDetails = Review & {
+  user: User | null; // User bisa null
+  product: Product;
 }
 
-// Komponen Ikon Bintang (tidak berubah)
+// Komponen Ikon Bintang
 const StarIcon = ({ filled }: { filled: boolean }) => ( <svg className={`w-6 h-6 ${filled ? 'text-yellow-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>);
-// Komponen Ikon Hapus (baru)
+// Komponen Ikon Hapus
 const TrashIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>);
 
 
@@ -23,11 +21,9 @@ export default function PenilaianPage() {
   const [reviews, setReviews] = useState<ReviewWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // State untuk modal konfirmasi hapus
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState<number | null>(null);
 
-  // Fungsi untuk mengambil data dari API
   const fetchReviews = async () => {
     setIsLoading(true);
     const res = await fetch('/api/reviews');
@@ -36,7 +32,6 @@ export default function PenilaianPage() {
     setIsLoading(false);
   };
 
-  // Ambil data saat komponen pertama kali dimuat
   useEffect(() => {
     fetchReviews();
   }, []);
@@ -48,15 +43,16 @@ export default function PenilaianPage() {
 
   const confirmDelete = async () => {
     if (!reviewToDelete) return;
-    
     await fetch(`/api/reviews/${reviewToDelete}`, { method: 'DELETE' });
-    
-    // Update UI dengan menghapus review dari state
     setReviews(reviews.filter(r => r.id !== reviewToDelete));
-    
-    // Tutup modal
     setIsModalOpen(false);
     setReviewToDelete(null);
+  };
+
+  // Fungsi untuk menghitung rata-rata (jika diperlukan)
+  const calculateAverageRating = (review: Review) => {
+    const total = review.ratingWaktu + review.ratingHarga + review.ratingBahan + review.ratingDesain + review.ratingPackaging;
+    return Math.round(total / 5);
   };
 
   if (isLoading) return <p className="text-gray-500">Memuat data ulasan...</p>;
@@ -71,20 +67,26 @@ export default function PenilaianPage() {
           {reviews.length === 0 ? (
             <p className="text-gray-500">Belum ada ulasan yang masuk.</p>
           ) : (
-            reviews.map((review) => (
-              <div key={review.id} className="p-6 bg-white rounded-xl shadow-md">
-                <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center"><span className="text-xl font-bold text-gray-500">{review.user.name.charAt(0)}</span></div>
-                  <div className="flex-1">
-                    <p className="font-bold text-brand-text">{review.user.name}</p>
-                    <p className="text-sm text-gray-500">Memberi ulasan untuk: <span className="font-semibold">{review.product.name}</span></p>
-                    <div className="flex items-center mt-1">{[...Array(5)].map((_, i) => ( <StarIcon key={i} filled={i < review.rating} />))}</div>
-                    <p className="mt-3 text-gray-600">{review.comment}</p>
+            reviews.map((review) => {
+              // PERBAIKAN: Gunakan reviewerName sebagai prioritas
+              const displayName = review.reviewerName || review.user?.name || 'Anonim';
+              const displayInitial = displayName.charAt(0).toUpperCase();
+
+              return (
+                <div key={review.id} className="p-6 bg-white rounded-xl shadow-md">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center"><span className="text-xl font-bold text-gray-500">{displayInitial}</span></div>
+                    <div className="flex-1">
+                      <p className="font-bold text-brand-text">{displayName}</p>
+                      <p className="text-sm text-gray-500">Memberi ulasan untuk: <span className="font-semibold">{review.product.name}</span></p>
+                      <div className="flex items-center mt-1">{[...Array(5)].map((_, i) => ( <StarIcon key={i} filled={i < calculateAverageRating(review)} />))}</div>
+                      <p className="mt-3 text-gray-600">{review.comment}</p>
+                    </div>
+                    <button onClick={() => handleDeleteClick(review.id)} className="p-2 text-red-500 rounded-full hover:bg-red-100"><TrashIcon /></button>
                   </div>
-                  <button onClick={() => handleDeleteClick(review.id)} className="p-2 text-red-500 rounded-full hover:bg-red-100"><TrashIcon /></button>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
