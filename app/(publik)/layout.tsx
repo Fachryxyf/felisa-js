@@ -1,33 +1,18 @@
 // app/(publik)/layout.tsx
+'use client'; // Ubah menjadi Client Component
+
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { cookies } from 'next/headers';
-import * as jose from 'jose';
+import { useCart } from '../context/CartContext';
+import { HiOutlineShoppingCart } from 'react-icons/hi';
 
-type UserPayload = {
-  readonly role: 'ADMIN' | 'CUSTOMER';
-}
-
-export default async function PublikLayout({
+export default function PublikLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // PERBAIKAN: Menggunakan 'await' untuk mengambil cookie
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('auth_session');
-  let loggedInUser: UserPayload | null = null;
-  
-  if (sessionCookie?.value) {
-    try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
-      const { payload } = await jose.jwtVerify(sessionCookie.value, secret);
-      loggedInUser = payload as UserPayload;
-    } catch (err) {
-      console.error("Header token verification failed:", err);
-    }
-  }
+  const { cartCount } = useCart(); // Ambil jumlah item di keranjang
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -44,15 +29,19 @@ export default async function PublikLayout({
             Beranda
           </Link>
           
-          {loggedInUser?.role === 'CUSTOMER' ? (
-            <Link href="/akun-saya" className="px-4 py-2 text-sm font-semibold text-white bg-brand-primary rounded-lg hover:bg-orange-500">
-                Akun Saya
-            </Link>
-          ) : (
-            <Link href="/login" className="px-4 py-2 text-sm font-semibold text-brand-primary border border-brand-primary rounded-lg hover:bg-orange-50 transition-colors">
-                Login
-            </Link>
-          )}
+          {/* Ikon Keranjang */}
+          <Link href="/keranjang" className="relative p-2 rounded-full hover:bg-gray-100">
+            <HiOutlineShoppingCart size={24} className="text-gray-700" />
+            {cartCount > 0 && (
+              <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+
+          <Link href="/login" className="px-4 py-2 text-sm font-semibold text-brand-primary border border-brand-primary rounded-lg hover:bg-orange-50 transition-colors">
+            Login
+          </Link>
         </nav>
       </header>
       

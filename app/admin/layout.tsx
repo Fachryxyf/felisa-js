@@ -10,9 +10,10 @@ import {
   HiOutlineUserCircle,
   HiOutlineCube,
   HiOutlineUsers,
-  HiOutlineLogout // Impor ikon logout
+  HiOutlineLogout 
 } from 'react-icons/hi';
 import { useLoading } from '../context/LoadingContext';
+import Image from 'next/image';
 
 export default function AdminLayout({ children }: { children: React.ReactNode; }) {
   const pathname = usePathname();
@@ -46,7 +47,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode; }
       {/* Sidebar */}
       <aside className="w-64 p-4 bg-brand-secondary flex flex-col">
         <div>
-          <h1 className="px-2 text-2xl font-bold text-brand-text">AyudCraft</h1>
+                    <div className="px-2 mb-8">
+            <Link href="/admin/dashboard" className="flex items-center gap-3">
+                <Image
+                    src="/images/Ayud Craft Lettermark Primary Logo.png"
+                    alt="Ayud Craft Logo"
+                    width={32}
+                    height={32}
+                    className="object-contain"
+                />
+                <h1 className="text-2xl font-bold text-brand-text">AyudCraft</h1>
+            </Link>
+          </div>
           <nav className="mt-8">
             <ul>
               {navLinks.map((link) => {

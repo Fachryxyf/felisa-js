@@ -4,8 +4,12 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 
+// Impor provider yang sudah ada
 import { LoadingProvider } from "./context/LoadingContext";
 import GlobalLoadingIndicator from "./components/GlobalLoadingIndicator";
+
+// 1. Impor CartProvider yang baru kita buat
+import { CartProvider } from "./context/CartContext";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -24,11 +28,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* PERBAIKAN: Tambahkan kembali className di sini */}
       <body className={poppins.className}>
+        {/* Urutan provider penting. LoadingProvider membungkus semuanya. */}
         <LoadingProvider>
-          <GlobalLoadingIndicator />
-          {children}
+          {/* 2. Bungkus aplikasi dengan CartProvider di dalam LoadingProvider */}
+          <CartProvider>
+            <GlobalLoadingIndicator />
+            {children}
+          </CartProvider>
         </LoadingProvider>
       </body>
     </html>

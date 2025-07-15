@@ -8,6 +8,7 @@ const config = {
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
       { protocol: 'https', hostname: 'cdn.pixabay.com' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
+      { protocol: 'https', hostname: 'googleusercontent.com' },
     ],
   },
 }

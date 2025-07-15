@@ -16,14 +16,27 @@ export async function GET(
 ) {
   try {
     const id = parseInt(params.id);
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return NextResponse.json({ message: "Produk tidak ditemukan." }, { status: 404 });
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true, // Ambil detail produk untuk setiap item
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json({ message: "Pesanan tidak ditemukan." }, { status: 404 });
     }
-    return NextResponse.json(product);
+
+    return NextResponse.json(order);
+
   } catch (error) {
-    console.error("API GET Product Error:", error);
-    return NextResponse.json({ message: "Gagal mengambil data produk." }, { status: 500 });
+    console.error(`API GET Order Error (ID: ${params.id}):`, error);
+    return NextResponse.json({ message: "Gagal mengambil data pesanan." }, { status: 500 });
   }
 }
 
