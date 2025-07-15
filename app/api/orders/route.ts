@@ -2,7 +2,7 @@
 
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
-import type { CartItem } from '../../context/CartContext';
+import type { CartItem } from '../../context/AppContext';
 
 export async function POST(request: Request) {
   try {

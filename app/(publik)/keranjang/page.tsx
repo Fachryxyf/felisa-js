@@ -3,13 +3,14 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCart } from '../../context/CartContext';
+import { useApp } from '../../context/AppContext'; // Ganti useCart menjadi useApp
 import { HiOutlineTrash } from 'react-icons/hi';
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 
 export default function KeranjangPage() {
-  const { cartItems, updateQuantity, removeFromCart, totalAmount, cartCount } = useCart();
+  const { cartItems, updateQuantity, removeFromCart, totalAmount, cartCount } = useApp(); // Ganti useCart menjadi useApp
+
 
   return (
     <div className="container mx-auto">

@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HiEye, HiEyeOff, HiArrowLeft } from 'react-icons/hi';
-import { useLoading } from '../context/LoadingContext'; // 1. Impor useLoading
+import { useLoading } from '../context/LoadingContext';
+import { useApp } from '../context/AppContext'; // Gunakan useApp
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,13 +16,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  // 2. Hapus state isLoading lokal, ganti dengan useLoading dari context
   const { isLoading, showLoading, hideLoading } = useLoading();
+  const { setLoggedInUser } = useApp(); // Ambil fungsi dari AppContext
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    showLoading();
     setError('');
-    showLoading(); // 3. Tampilkan spinner global
 
     try {
       const res = await fetch('/api/auth/login', {
@@ -32,8 +33,12 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        // Lakukan refresh untuk memastikan server mengenali cookie baru sebelum redirect
+        // Atur state global setelah login berhasil
+        setLoggedInUser({ name: data.user.name, role: data.user.role });
+        
+        // Refresh halaman untuk memastikan header diperbarui
         router.refresh(); 
+
         if (data.user.role === 'ADMIN') {
           router.push('/admin/dashboard');
         } else {
@@ -46,7 +51,7 @@ export default function LoginPage() {
       console.error('Login form submission error:', err);
       setError('Tidak dapat terhubung ke server. Silakan coba lagi.');
     } finally {
-      hideLoading(); // 4. Sembunyikan spinner global, baik berhasil maupun gagal
+      hideLoading();
     }
   };
 
@@ -61,17 +66,23 @@ export default function LoginPage() {
           <p className="mt-2 text-gray-600">Hi, Selamat Datang kembali 👋</p>
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && <p className="p-3 text-center text-red-800 bg-red-100 rounded-lg">{error}</p>}
-            <div><label className="block text-sm font-medium text-gray-700">Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Masukan Email" className="w-full px-4 py-3 mt-1 text-gray-700 bg-gray-100 border rounded-lg focus:ring-brand-primary focus:border-brand-primary" required/></div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Masukan Email" className="w-full px-4 py-3 mt-1 text-gray-700 bg-gray-100 border rounded-lg focus:ring-brand-primary focus:border-brand-primary" required/>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Kata Sandi</label>
-              <div className="relative mt-1"><input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukan kata sandi" className="w-full px-4 py-3 pr-10 text-gray-700 bg-gray-100 border rounded-lg focus:ring-brand-primary focus:border-brand-primary" required/><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-brand-primary">{showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}</button></div>
+              <div className="relative mt-1">
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Masukan kata sandi" className="w-full px-4 py-3 pr-10 text-gray-700 bg-gray-100 border rounded-lg focus:ring-brand-primary focus:border-brand-primary" required/>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-brand-primary">{showPassword ? <HiEyeOff size={20} /> : <HiEye size={20} />}</button>
+              </div>
             </div>
-            <div className="flex items-center justify-between"><div className="flex items-center"><input type="checkbox" id="remember-me" className="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-brand-primary" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">Ingat saya</label></div><div className="text-sm"><Link href="/lupa-sandi" className="font-medium text-brand-primary hover:text-orange-500">Lupa kata sandi?</Link></div></div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center"><input type="checkbox" id="remember-me" className="w-4 h-4 text-brand-primary border-gray-300 rounded focus:ring-brand-primary" /><label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">Ingat saya</label></div>
+              <div className="text-sm"><Link href="/lupa-sandi" className="font-medium text-brand-primary hover:text-orange-500">Lupa kata sandi?</Link></div>
+            </div>
             <div>
-              {/* 5. Kondisi disabled tombol sekarang menggunakan isLoading dari context */}
-              <button type="submit" disabled={isLoading} className="w-full px-4 py-3 font-semibold text-white transition-colors duration-300 bg-brand-primary rounded-lg hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary disabled:opacity-50">
-                Masuk
-              </button>
+              <button type="submit" disabled={isLoading} className="w-full px-4 py-3 font-semibold text-white transition-colors duration-300 bg-brand-primary rounded-lg hover:bg-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary disabled:opacity-50">Masuk</button>
             </div>
             <div className="text-sm text-center pt-2"><Link href="/" className="font-medium text-gray-500 hover:text-brand-primary hover:underline">Kembali ke Beranda</Link></div>
           </form>

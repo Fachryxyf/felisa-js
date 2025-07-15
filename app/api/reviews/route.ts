@@ -2,30 +2,29 @@
 import prisma from '../../../lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import * as jose from 'jose'
+import * as jose from 'jose';
 
+// FUNGSI GET UNTUK MENGAMBIL SEMUA ULASAN
 export async function GET() {
   try {
     const reviews = await prisma.review.findMany({
       include: {
-        user: { select: { name: true } },
+        user: { select: { name: true } }, // Ambil nama dari user yang terhubung (jika ada)
         product: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(reviews);
   } catch (error) {
-    console.error('API GET Reviews Error:', error);
+    console.error("API GET Reviews Error:", error);
     return NextResponse.json({ message: 'Gagal mengambil data ulasan.' }, { status: 500 });
   }
 }
 
+// FUNGSI POST UNTUK MENGIRIM ULASAN BARU
 export async function POST(request: Request) {
   try {
-    // 1. Verifikasi sesi pengguna dari cookie dengan cara yang benar
-    const cookieStore = await cookies(); // Gunakan await
-    const sessionCookie = cookieStore.get('auth_session');
-
+    const sessionCookie = cookies().get('auth_session');
     if (!sessionCookie) {
       return NextResponse.json({ message: 'Anda harus login untuk memberi ulasan.' }, { status: 401 });
     }
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
     const loggedInUserId = payload.userId as number;
     const loggedInUserName = payload.name as string;
 
-    // 2. Ambil data dari body request
     const data = await request.json();
     const { comment, productId, ...ratings } = data;
 
@@ -43,11 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Komentar dan produk wajib diisi.' }, { status: 400 });
     }
 
-    // 3. Simpan ulasan dengan data dari sesi
     const newReview = await prisma.review.create({
       data: {
-        comment: comment,
-        productId: productId,
+        comment,
+        productId,
         ratingWaktu: ratings.ratingWaktu,
         ratingHarga: ratings.ratingHarga,
         ratingBahan: ratings.ratingBahan,

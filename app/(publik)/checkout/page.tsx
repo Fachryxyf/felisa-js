@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCart } from '../../context/AppContext';
 import { useLoading } from '../../context/LoadingContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

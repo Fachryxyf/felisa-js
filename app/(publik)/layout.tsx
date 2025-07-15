@@ -1,10 +1,10 @@
 // app/(publik)/layout.tsx
-'use client'; // Ubah menjadi Client Component
+'use client';
 
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useCart } from '../context/CartContext';
+import { useApp } from '../context/AppContext'; // Ganti ke useApp
 import { HiOutlineShoppingCart } from 'react-icons/hi';
 
 export default function PublikLayout({
@@ -12,7 +12,7 @@ export default function PublikLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { cartCount } = useCart(); // Ambil jumlah item di keranjang
+  const { cartCount, loggedInUser } = useApp(); // Ambil loggedInUser dari context
 
   return (
     <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -29,7 +29,6 @@ export default function PublikLayout({
             Beranda
           </Link>
           
-          {/* Ikon Keranjang */}
           <Link href="/keranjang" className="relative p-2 rounded-full hover:bg-gray-100">
             <HiOutlineShoppingCart size={24} className="text-gray-700" />
             {cartCount > 0 && (
@@ -39,9 +38,22 @@ export default function PublikLayout({
             )}
           </Link>
 
-          <Link href="/login" className="px-4 py-2 text-sm font-semibold text-brand-primary border border-brand-primary rounded-lg hover:bg-orange-50 transition-colors">
-            Login
-          </Link>
+          {/* Navigasi dinamis dari context */}
+          {loggedInUser ? (
+            <Link 
+              href={loggedInUser.role === 'ADMIN' ? '/admin/dashboard' : '/akun-saya'} 
+              className="px-4 py-2 text-sm font-semibold text-white bg-brand-primary rounded-lg hover:bg-orange-500"
+            >
+              {loggedInUser.role === 'ADMIN' ? 'Dasbor' : 'Akun Saya'}
+            </Link>
+          ) : (
+            <Link 
+              href="/login" 
+              className="px-4 py-2 text-sm font-semibold text-brand-primary border border-brand-primary rounded-lg hover:bg-orange-50 transition-colors"
+            >
+              Login
+            </Link>
+          )}
         </nav>
       </header>
       
