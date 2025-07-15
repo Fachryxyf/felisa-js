@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCart } from '../../context/AppContext';
+import { useApp } from '../../context/AppContext'; // PERBAIKAN: Ganti useCart menjadi useApp
 import { useLoading } from '../../context/LoadingContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
 
 export default function CheckoutPage() {
-  const { cartItems, totalAmount, clearCart, cartCount } = useCart();
+  const { cartItems, totalAmount, clearCart, cartCount } = useApp(); // PERBAIKAN: Gunakan useApp()
   const { showLoading, hideLoading } = useLoading();
   const router = useRouter();
   
